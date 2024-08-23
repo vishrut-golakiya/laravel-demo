@@ -1,47 +1,56 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.1
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: pdo_mysql
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip
-          composer install
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y unzip openssh-client git
+        curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
+        php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
+        composer install
 
-      - name: Configure environment
-        run: |
-          
-          php artisan key:generate
-          php artisan migrate
-          php artisan db:seed
+    - name: Generate environment file
+      run: |
+        cp .env.example .env
+        php artisan key:generate
 
-      - name: Run tests
-        run: ./vendor/bin/phpunit
+    - name: Run database migrations and seeders
+      run: |
+        php artisan migrate
+        php artisan db:seed
 
-      - name: Done
-        run: echo "Done!"
+    - name: Run tests
+      run: ./vendor/bin/phpunit
 
-    services:
-      mysql:
-        image: mysql:5.7
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: my_database
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping --silent" --health-interval=10s
+    - name: Deploy to EC2
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan your.ec2.instance.ip >> ~/.ssh/known_hosts
+        scp -r . user@your.ec2.instance.ip:/path/to/deploy
+        ssh user@your.ec2.instance.ip "cd /path/to/deploy && ./deploy-script.sh"
+
