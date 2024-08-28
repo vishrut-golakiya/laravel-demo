@@ -36,15 +36,14 @@ jobs:
 
     - name: Deploy to EC2
       env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
       run: |
-        # Setup SSH key
-        mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-
-        # Connect to the EC2 instance and navigate to the directory
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@<EC2_INSTANCE_IP> \
-        "cd /var/www/html/myApp && \
-        # Add any additional commands you want to run here"
+          echo "${EC2_SSH_KEY}" > practice.pem
+          chmod 600 dockerhub.pem
+          ssh -o StrictHostKeyChecking=no -i practice.pem ubuntu@${EC2_PUBLIC_IP} << 'EOF'
+            cd /var/www/html/myApp
+            
+            
+          EOF
         
