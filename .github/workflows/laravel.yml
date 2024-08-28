@@ -38,9 +38,13 @@ jobs:
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       run: |
+        # Setup SSH key
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan your.ec2.instance.ip >> ~/.ssh/known_hosts
-        scp -r . user@your.ec2.instance.ip:/path/to/deploy
-        ssh user@your.ec2.instance.ip "cd /path/to/deploy && ./deploy-script.sh"
+
+        # Connect to the EC2 instance and navigate to the directory
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@<EC2_INSTANCE_IP> << EOF
+          cd /var/www/html/myApp
+          # Add any additional commands you want to run here
+        EOF
